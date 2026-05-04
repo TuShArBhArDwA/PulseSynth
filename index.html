@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>Pulse Synthesizer - 4D Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #000;
+            margin: 0;
+            overflow: hidden;
+            touch-action: manipulation;
+            transition: background 0.5s ease;
+        }
+
+        /* 3D Perspective Container for "4D" effects */
+        .perspective-container {
+            perspective: 1200px;
+            transform-style: preserve-3d;
+        }
+
+        /* Number pulse animation utilities */
+        #number-display {
+            transform-origin: center center;
+            will-change: transform, text-shadow, filter, color;
+            transform-style: preserve-3d;
+        }
+
+        /* Signature Wave Animation */
+        @keyframes wave-bounce {
+            0%, 100% { transform: scaleY(0.3); }
+            50% { transform: scaleY(1); }
+        }
+        .wave-bar {
+            transform-origin: bottom;
+            animation: wave-bounce 1s ease-in-out infinite;
+            animation-play-state: paused;
+        }
+        .is-playing .wave-bar {
+            animation-play-state: running;
+        }
+        .wave-bar:nth-child(1) { animation-delay: 0.0s; background-color: #22d3ee; box-shadow: 0 0 8px #22d3ee; }
+        .wave-bar:nth-child(2) { animation-delay: 0.2s; background-color: #a855f7; box-shadow: 0 0 8px #a855f7; }
+        .wave-bar:nth-child(3) { animation-delay: 0.4s; background-color: #ec4899; box-shadow: 0 0 8px #ec4899; }
+        .wave-bar:nth-child(4) { animation-delay: 0.6s; background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
+
+        /* Overlay Animations */
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        .animation-delay-6000 { animation-delay: 6s; }
+
+        @keyframes letter-flow {
+            0%, 100% { text-shadow: 0 0 15px #22d3ee, 0 0 30px #a855f7; transform: translateY(0); color: #fff; }
+            50% { text-shadow: 0 0 25px #ec4899, 0 0 50px #ef4444, 0 0 80px #ef4444; transform: translateY(-15px) scale(1.1); color: #ffebf0; }
+        }
+        #main-title span {
+            display: inline-block;
+            color: #fff;
+            animation: letter-flow 2.5s ease-in-out infinite;
+            will-change: transform, text-shadow;
+        }
+
+        @keyframes gradient-x {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        .animate-gradient-x {
+            background-size: 200% 200%;
+            animation: gradient-x 3s ease infinite;
+        }
+
+        @keyframes button-pulse-idle {
+            0%, 100% { box-shadow: 0 0 30px rgba(255,255,255,0.4); transform: scale(1); }
+            50% { box-shadow: 0 0 50px rgba(255,255,255,0.7); transform: scale(1.05); }
+        }
+        #start-btn { animation: button-pulse-idle 2s ease-in-out infinite; }
+        #start-btn:hover {
+            animation: none;
+            transform: scale(1.1);
+            box-shadow: 0 0 60px rgba(255,255,255,0.9);
+        }
+        
+        @keyframes grid-scroll {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 40px; }
+        }
+        .synthwave-grid {
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.07) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.07) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: perspective(500px) rotateX(60deg) scale(2);
+            transform-origin: bottom;
+            animation: grid-scroll 1s linear infinite;
+        }
+
+        @keyframes sweep {
+            0% { transform: translateX(-100%) skewX(-15deg); }
+            100% { transform: translateX(200%) skewX(-15deg); }
+        }
+        .group-hover\:animate-sweep:hover { animation: sweep 0.8s ease-in-out; }
+
+        /* Homepage Hype Animations */
+        @keyframes float-up {
+            0% { transform: translateY(110vh) rotate(0deg) scale(0.5); opacity: 0; }
+            10% { opacity: 0.8; filter: brightness(200%); }
+            90% { opacity: 0.8; }
+            100% { transform: translateY(-10vh) rotate(360deg) scale(1.2); opacity: 0; }
+        }
+        .hype-particle {
+            position: absolute;
+            animation: float-up linear infinite;
+            will-change: transform, opacity;
+        }
+        @keyframes glitch-skew {
+            0%, 94%, 98%, 100% { transform: skewX(0deg); }
+            96% { transform: skewX(-15deg) translateX(-5px); filter: hue-rotate(90deg) drop-shadow(0 0 20px red); }
+            97% { transform: skewX(15deg) translateX(5px); filter: hue-rotate(-90deg) drop-shadow(0 0 20px cyan); }
+        }
+        .animate-glitch { animation: glitch-skew 4s infinite; }
+
+        /* Party Cat Image Utilities */
+        .party-cat {
+            will-change: transform, filter;
+            object-fit: cover; /* Ensures gifs fit nicely */
+            transition: opacity 0.3s ease;
+        }
+
+        /* Custom Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.3s;
+        }
+        input[type=range]:hover::-webkit-slider-runnable-track {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 28px;
+            width: 28px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -10px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:active {
+            transform: scale(1.3);
+        }
+    </style>
+</head>
+<body class="text-white h-screen flex flex-col items-center justify-center select-none">
+
+    <!-- Start Overlay -->
+    <div id="overlay" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black transition-opacity duration-700 overflow-hidden">
+        
+        <!-- Animated Background Elements -->
+        <div class="absolute inset-0 z-0 opacity-60 pointer-events-none">
+            <!-- Glowing Floating Orbs -->
+            <div class="absolute top-1/4 left-1/4 w-72 h-72 md:w-96 md:h-96 bg-purple-600/40 rounded-full mix-blend-screen filter blur-[80px] animate-blob"></div>
+            <div class="absolute top-1/3 right-1/4 w-72 h-72 md:w-96 md:h-96 bg-pink-600/40 rounded-full mix-blend-screen filter blur-[80px] animate-blob animation-delay-2000"></div>
+            <div class="absolute bottom-1/4 left-1/2 w-72 h-72 md:w-96 md:h-96 bg-red-600/40 rounded-full mix-blend-screen filter blur-[80px] animate-blob animation-delay-4000"></div>
+            <div class="absolute top-1/2 right-1/3 w-72 h-72 bg-cyan-600/40 rounded-full mix-blend-screen filter blur-[80px] animate-blob animation-delay-6000"></div>
+            
+            <!-- Neon Horizon Line -->
+            <div class="absolute bottom-[66%] inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_20px_#22d3ee,0_0_40px_#ec4899] opacity-70"></div>
+            
+            <!-- Moving Synthwave Grid -->
+            <div class="absolute bottom-0 inset-x-0 h-2/3 synthwave-grid opacity-60 filter drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]"></div>
+            
+            <!-- Hype Particles (Music notes, lightning) -->
+            <div class="hype-particle text-3xl left-[10%] text-cyan-400 drop-shadow-[0_0_10px_#22d3ee]" style="animation-delay: 0s; animation-duration: 7s;">🎵</div>
+            <div class="hype-particle text-4xl left-[85%] text-pink-500 drop-shadow-[0_0_10px_#ec4899]" style="animation-delay: 2s; animation-duration: 5s;">⚡</div>
+            <div class="hype-particle text-2xl left-[25%] text-purple-500 drop-shadow-[0_0_10px_#a855f7]" style="animation-delay: 4s; animation-duration: 6s;">🎹</div>
+            <div class="hype-particle text-5xl left-[70%] text-red-500 drop-shadow-[0_0_10px_#ef4444]" style="animation-delay: 1s; animation-duration: 8s;">🎶</div>
+            <div class="hype-particle text-2xl left-[45%] text-white drop-shadow-[0_0_10px_#fff]" style="animation-delay: 3s; animation-duration: 4s;">✨</div>
+
+            <!-- Silhouette Jamming Cats waiting in the background -->
+            <img src="https://media.giphy.com/media/l41lOelaBXYvA2Qk8/giphy.gif" class="absolute bottom-10 left-10 w-32 h-32 opacity-20 mix-blend-screen filter grayscale brightness-200" alt="">
+            <img src="https://media.giphy.com/media/l4pTfBwWmHEnGUAne/giphy.gif" class="absolute bottom-10 right-10 w-32 h-32 opacity-20 mix-blend-screen filter grayscale brightness-200" style="transform: scaleX(-1);" alt="">
+
+            <!-- Vignette to darken edges -->
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#000_80%)]"></div>
+        </div>
+
+        <!-- Content -->
+        <div class="relative z-10 flex flex-col items-center mt-[-40px]">
+            
+            <!-- Cybernetic Audio Core Logo -->
+            <div class="relative w-28 h-28 mb-8 flex items-center justify-center perspective-container">
+                <div class="absolute w-10 h-10 bg-white rounded-full shadow-[0_0_30px_#fff,0_0_80px_#ec4899] animate-[pulse_0.5s_infinite]"></div>
+                <div class="absolute inset-0 rounded-full border-[3px] border-cyan-400/80 border-t-transparent animate-[spin_3s_linear_infinite] shadow-[0_0_15px_#22d3ee]"></div>
+                <div class="absolute inset-2 rounded-full border-[3px] border-pink-500/80 border-b-transparent animate-[spin_2s_linear_infinite_reverse] shadow-[0_0_15px_#ec4899]"></div>
+                <div class="absolute inset-4 rounded-full border-[3px] border-purple-500/80 border-l-transparent animate-[spin_1.5s_linear_infinite] shadow-[0_0_15px_#a855f7]"></div>
+                
+                <div class="absolute z-10 flex items-end gap-1 h-6 mix-blend-difference">
+                    <div class="w-1.5 bg-white h-full animate-[wave-bounce_0.4s_infinite]"></div>
+                    <div class="w-1.5 bg-white h-full animate-[wave-bounce_0.4s_infinite_0.1s]"></div>
+                    <div class="w-1.5 bg-white h-full animate-[wave-bounce_0.4s_infinite_0.2s]"></div>
+                </div>
+            </div>
+
+            <h1 id="main-title" class="text-5xl md:text-7xl font-black mb-10 tracking-tighter animate-glitch">PULSE SYNTH</h1>
+            
+            <!-- Clickbait Warning UI -->
+            <div class="mb-14 flex flex-col items-center gap-4 max-w-lg px-4 animate-glitch" style="animation-delay: 1.5s;">
+                <div class="px-5 py-1.5 rounded-full border border-red-500 bg-red-500/20 text-red-400 text-[10px] md:text-xs font-bold tracking-[0.3em] animate-[pulse_0.5s_infinite] flex items-center gap-2 shadow-[0_0_30px_rgba(239,68,68,0.6)] backdrop-blur-md">
+                    <span class="text-sm md:text-base animate-bounce">⚠️</span> SENSORY OVERLOAD WARNING <span class="text-sm md:text-base animate-bounce" style="animation-delay: 0.1s;">⚠️</span>
+                </div>
+                
+                <h2 class="text-xl md:text-2xl font-black text-white text-center drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] leading-tight uppercase">
+                    Unlock <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-pink-500 to-purple-500 animate-gradient-x text-3xl font-black italic">Mind-Bending</span> Frequencies.
+                </h2>
+                
+                <p class="text-slate-300 text-sm md:text-base font-bold tracking-wide text-center">
+                    98% of users can't handle <span class="text-red-400 drop-shadow-[0_0_15px_rgba(239,68,68,0.9)] text-lg animate-pulse">DIMENSION 10</span>. Can you? 🤯
+                </p>
+            </div>
+            
+            <button id="start-btn" class="relative group px-16 py-6 bg-white text-black font-black rounded-full text-2xl transition-all duration-300 overflow-hidden active:scale-95 shadow-[0_0_60px_rgba(255,255,255,0.6)] hover:shadow-[0_0_100px_rgba(255,255,255,1)] hover:scale-110">
+                <span class="relative z-10 tracking-[0.3em] italic">ENTER THE GRID</span>
+                <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/80 to-transparent -translate-x-full group-hover:animate-sweep"></div>
+            </button>
+        </div>
+    </div>
+
+    <!-- LEFT & RIGHT PARTY CATS (Hidden until play) -->
+    <!-- Lowered z-index to z-0 so they slip behind the controls/number on smaller screens -->
+    <div id="left-cat-container" class="fixed -translate-y-1/2 z-0 opacity-0 transition-all duration-700 pointer-events-none flex flex-col items-center gap-2" style="top: 50%; left: 5vw;">
+        <img id="left-cat" src="" class="party-cat w-24 h-24 md:w-32 md:h-32 lg:w-48 lg:h-48 rounded-2xl drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] bg-white/10" alt="Party Cat Left">
+    </div>
+    
+    <div id="right-cat-container" class="fixed -translate-y-1/2 z-0 opacity-0 transition-all duration-700 pointer-events-none flex flex-col items-center gap-2" style="top: 50%; right: 5vw;">
+        <img id="right-cat" src="" class="party-cat w-24 h-24 md:w-32 md:h-32 lg:w-48 lg:h-48 rounded-2xl drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] bg-white/10" style="transform: scaleX(-1);" alt="Party Cat Right">
+    </div>
+
+    <!-- MASSIVE Center Display (Z-0) -->
+    <div class="fixed top-0 inset-x-0 bottom-48 md:bottom-32 flex items-center justify-center pointer-events-none z-0 perspective-container overflow-hidden">
+        <div id="number-display" class="text-[35vh] md:text-[50vh] font-black leading-none opacity-90 select-none">
+            5
+        </div>
+    </div>
+
+    <!-- Controls Panel (Z-10, Glassmorphism at bottom) -->
+    <div class="absolute bottom-0 inset-x-0 p-4 pb-6 md:p-6 md:pb-8 flex flex-col items-center gap-4 z-10 bg-black/40 backdrop-blur-2xl border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+        
+        <div class="w-full max-w-4xl flex flex-col md:flex-row gap-4 md:gap-6 items-center justify-between">
+            
+            <div class="flex gap-3 md:gap-4 items-center shrink-0 w-full md:w-auto justify-center">
+                <button id="toggle-btn" class="px-6 py-2 bg-green-500/10 border-2 border-green-500 rounded-full text-green-400 hover:bg-green-500 hover:text-black font-black transition-all w-32 shadow-[0_0_20px_rgba(34,197,94,0.3)] tracking-widest text-base">
+                    PLAY
+                </button>
+                
+                <div class="relative">
+                    <select id="waveform-select" class="px-4 py-2 bg-black/50 border border-slate-600 rounded-full text-slate-300 outline-none hover:border-slate-400 transition-colors appearance-none text-center w-36 cursor-pointer font-bold text-sm">
+                        <option value="mix">Mix (Saw+Sq)</option>
+                        <option value="sine">Sine</option>
+                        <option value="square">Square</option>
+                        <option value="sawtooth">Sawtooth</option>
+                        <option value="triangle">Triangle</option>
+                    </select>
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[10px]">▼</div>
+                </div>
+            </div>
+
+            <div class="flex-grow w-full flex flex-col gap-1.5 relative md:px-4">
+                <div class="flex justify-between w-full text-slate-500 font-bold text-[8px] tracking-widest px-1">
+                    <span>LOW DIMENSION</span>
+                    <span>HIGH DIMENSION</span>
+                </div>
+                <input type="range" id="number-slider" min="1" max="10" value="5" class="w-full">
+                <div class="text-[9px] text-slate-500 text-center font-mono uppercase tracking-wider mt-1 whitespace-nowrap">
+                    ↑/↓ : Change • Space : Play/Stop
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0">
+                <div class="w-full md:w-52 flex flex-col items-center gap-1 relative">
+                    <input type="text" id="mood-input" placeholder="Mood (e.g. calm, dark)..." autocomplete="off" class="w-full bg-black/50 border border-slate-600 rounded-full px-4 py-2 text-center text-sm text-white focus:outline-none focus:border-indigo-500 focus:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all placeholder-slate-600 font-bold">
+                    <span id="mood-status" class="absolute -top-6 text-[10px] text-indigo-400 font-bold transition-opacity duration-300 opacity-0 uppercase tracking-wider bg-black/80 px-3 py-1 rounded-full">Applied</span>
+                </div>
+                
+                <a href="https://minianonlink.vercel.app/tusharbhardwaj" target="_blank" rel="noopener noreferrer" class="group cursor-pointer p-2 hover:bg-white/10 hover:scale-110 rounded-full transition-all shrink-0" title="Made by Mini Anon">
+                    <div class="flex items-end gap-[3px] h-5 w-6">
+                        <div class="wave-bar w-[3px] h-full rounded-full"></div>
+                        <div class="wave-bar w-[3px] h-full rounded-full"></div>
+                        <div class="wave-bar w-[3px] h-full rounded-full"></div>
+                        <div class="wave-bar w-[3px] h-full rounded-full"></div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const mainTitle = document.getElementById('main-title');
+        mainTitle.innerHTML = mainTitle.textContent.split('').map((char, i) => 
+            char === ' ' ? '&nbsp;' : `<span style="animation-delay: ${i * 0.1}s">${char}</span>`
+        ).join('');
+
+        let audioCtx;
+        let osc1, osc2, filter, masterGain;
+        let isPlaying = false;
+        let currentNumber = 5;
+        let currentWaveform = 'mix';
+        let loopTimeoutId;
+
+        let moodSettings = { tempoMult: 1.0, filterMult: 6.0, detune: 12 };
+
+        // --- 10 UNIQUE PARTY CATS & POSITIONS ---
+        // Fetch 10 truly unique cat gifs from TheCatAPI to bypass caching/same-gif issues
+        const catGifs = Array(10).fill('https://cataas.com/cat/gif?t=' + Date.now());
+        fetch('https://api.thecatapi.com/v1/images/search?mime_types=gif&limit=10')
+            .then(res => res.json())
+            .then(data => {
+                if(data && data.length > 0) {
+                    for(let i=0; i<data.length; i++) {
+                        catGifs[i] = data[i].url;
+                    }
+                    if (leftCat && rightCat) {
+                        leftCat.src = catGifs[currentNumber - 1];
+                        rightCat.src = catGifs[currentNumber - 1];
+                    }
+                }
+            })
+            .catch(err => console.log('Using fallback cats'));
+
+        // Strict safe-zone screen positions (avoids navbar and center number)
+        const catPositions = [
+            { top: '60%', left: '3vw', right: '3vw' },     // 1: Safe lower
+            { top: '25%', left: '5vw', right: '5vw' },     // 2: Safe upper
+            { top: '45%', left: '2vw', right: '2vw' },     // 3: Middle extreme edge
+            { top: '15%', left: '6vw', right: '6vw' },     // 4: High up
+            { top: '55%', left: '4vw', right: '4vw' },     // 5: Lower mid
+            { top: '35%', left: '3vw', right: '3vw' },     // 6: Upper mid extreme
+            { top: '65%', left: '6vw', right: '6vw' },     // 7: Lowest safe (above navbar)
+            { top: '20%', left: '2vw', right: '2vw' },     // 8: Top extreme corners
+            { top: '50%', left: '8vw', right: '8vw' },     // 9: True mid, slight inset
+            { top: '40%', left: '7vw', right: '7vw' }      // 10: Slightly inset mid
+        ];
+
+        const scaleFrequencies = [65.41, 77.78, 87.31, 98.00, 116.54, 130.81, 155.56, 174.61, 196.00, 233.08];
+
+        const startBtn = document.getElementById('start-btn');
+        const overlay = document.getElementById('overlay');
+        const toggleBtn = document.getElementById('toggle-btn');
+        const slider = document.getElementById('number-slider');
+        const display = document.getElementById('number-display');
+        const waveformSelect = document.getElementById('waveform-select');
+        const moodInput = document.getElementById('mood-input');
+        const moodStatus = document.getElementById('mood-status');
+        
+        const leftCatCont = document.getElementById('left-cat-container');
+        const rightCatCont = document.getElementById('right-cat-container');
+        const leftCat = document.getElementById('left-cat');
+        const rightCat = document.getElementById('right-cat');
+
+        leftCat.src = catGifs[4];
+        rightCat.src = catGifs[4];
+
+        function initAudio() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+
+            osc1 = audioCtx.createOscillator();
+            osc2 = audioCtx.createOscillator();
+            filter = audioCtx.createBiquadFilter();
+            masterGain = audioCtx.createGain();
+
+            applyWaveform();
+            osc2.detune.value = moodSettings.detune;
+
+            filter.type = 'lowpass';
+            filter.Q.value = 8;
+
+            masterGain.gain.value = 0;
+
+            osc1.connect(filter);
+            osc2.connect(filter);
+            filter.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+
+            osc1.start();
+            osc2.start();
+        }
+
+        function applyWaveform() {
+            if (!osc1 || !osc2) return;
+            if (currentWaveform === 'mix') {
+                osc1.type = 'sawtooth';
+                osc2.type = 'square';
+            } else {
+                osc1.type = currentWaveform;
+                osc2.type = currentWaveform;
+            }
+        }
+
+        function triggerPulse() {
+            if (!isPlaying) return;
+
+            const time = audioCtx.currentTime;
+            const targetFreq = scaleFrequencies[currentNumber - 1];
+            
+            const minTempo = 800 * moodSettings.tempoMult; 
+            const maxTempo = 100 * moodSettings.tempoMult;
+            const tempoMs = minTempo - ((currentNumber - 1) * (minTempo - maxTempo) / 9);
+            const durationSec = tempoMs / 1000;
+
+            const attackTime = 0.02;
+            const decayTime = durationSec * 0.8;
+
+            osc1.frequency.setValueAtTime(targetFreq, time);
+            osc2.frequency.setValueAtTime(targetFreq, time);
+
+            filter.frequency.cancelScheduledValues(time);
+            filter.frequency.setValueAtTime(targetFreq * moodSettings.filterMult, time);
+            filter.frequency.exponentialRampToValueAtTime(targetFreq, time + decayTime);
+
+            masterGain.gain.cancelScheduledValues(time);
+            masterGain.gain.setValueAtTime(0, time);
+            masterGain.gain.linearRampToValueAtTime(0.4, time + attackTime);
+            masterGain.gain.exponentialRampToValueAtTime(0.001, time + decayTime);
+
+            triggerVisualPulse(tempoMs);
+
+            loopTimeoutId = setTimeout(triggerPulse, tempoMs);
+        }
+
+        function getAwesomePulseStyles(num, hue) {
+            const base = `hsl(${hue}, 100%, 50%)`;
+            const bright = `hsl(${hue}, 100%, 70%)`;
+            const dark = `hsl(${hue}, 100%, 20%)`;
+
+            switch(num) {
+                case 1: return { transform: 'scale(1.25) translateY(4vh)', filter: 'none', color: '#fff', textShadow: `0 -10px 30px ${base}, 0 40px 100px ${dark}` };
+                case 2: return { transform: 'scaleX(1.4) scaleY(0.7) translateY(2vh)', filter: 'none', color: '#fff', textShadow: `0 0 60px ${base}` };
+                case 3: return { transform: 'scale(1.3) skewX(-20deg)', filter: 'none', color: '#fff', textShadow: `-30px 0 0 red, 30px 0 0 cyan, 0 0 50px ${base}` };
+                case 4: return { transform: 'scale(1.6)', filter: 'blur(3px)', color: 'rgba(255,255,255,0.1)', textShadow: `0 0 20px #fff, 0 0 80px ${bright}, 0 0 150px ${base}` };
+                case 5: return { transform: 'scale(1.4) rotateX(45deg) rotateY(-25deg)', filter: 'drop-shadow(0 50px 30px rgba(0,0,0,0.8))', color: '#fff', textShadow: `-15px 15px 0 hsla(${hue},100%,50%,0.6), -30px 30px 20px ${dark}` };
+                case 6: return { transform: 'scale(0.6) rotateZ(15deg)', filter: 'contrast(150%) brightness(150%)', color: '#fff', textShadow: `0 0 200px ${bright}, 0 0 300px ${base}` };
+                case 7: return { transform: 'scale(1.5)', filter: 'none', color: '#000', textShadow: `0 0 5px #fff, 0 0 10px #fff, 0 0 40px ${base}, 0 0 80px ${base}` };
+                case 8: return { transform: 'scale(1.3) translateX(8vw) skewX(35deg)', filter: 'blur(2px)', color: '#fff', textShadow: `-80px 0 30px ${base}` };
+                case 9: return { transform: 'scale(1.4)', filter: 'none', color: '#000', textShadow: `0 0 20px #fff, 0 0 60px ${bright}, 0 0 150px ${base}` };
+                case 10: return { transform: 'scale(1.8) rotateZ(-5deg)', filter: 'hue-rotate(45deg) saturate(200%)', color: '#fff', textShadow: `-20px -20px 0 #ff00ff, 20px 20px 0 #00ffff, 0 0 100px #fff, 0 0 250px ${base}` };
+                default: return { transform: 'scale(1.2)', filter: 'none', color: '#fff', textShadow: `0 0 50px ${base}` };
+            }
+        }
+
+        function triggerVisualPulse(tempoMs) {
+            const hue = 220 + ((currentNumber - 1) * 15);
+            
+            display.style.transition = `all 50ms cubic-bezier(0.1, 1.3, 0.3, 1)`;
+            document.body.style.background = `radial-gradient(circle at center, hsla(${hue}, 100%, 25%, 1) 0%, #000 60%)`;
+
+            const styles = getAwesomePulseStyles(currentNumber, hue);
+            display.style.transform = styles.transform;
+            display.style.filter = styles.filter;
+            display.style.color = styles.color;
+            display.style.textShadow = styles.textShadow;
+
+            leftCat.style.transition = `all 50ms cubic-bezier(0.1, 1.3, 0.3, 1)`;
+            rightCat.style.transition = `all 50ms cubic-bezier(0.1, 1.3, 0.3, 1)`;
+            
+            const catScale = 1 + (currentNumber * 0.05);
+            let catFilter = `drop-shadow(0 0 20px hsl(${hue}, 100%, 50%))`;
+            
+            if (currentNumber >= 8) catFilter += ` hue-rotate(${Math.random() * 360}deg) saturate(300%)`;
+            if (currentNumber === 10) catFilter += ` invert(1)`;
+
+            leftCat.style.transform = `scale(${catScale}) rotate(-10deg) translateY(-20px)`;
+            rightCat.style.transform = `scaleX(-1) scale(${catScale}) rotate(-10deg) translateY(-20px)`;
+            leftCat.style.filter = catFilter;
+            rightCat.style.filter = catFilter;
+
+            setTimeout(() => {
+                if(!isPlaying) return;
+                
+                const decayTime = tempoMs * 0.7;
+                display.style.transition = `all ${decayTime}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
+                
+                display.style.transform = 'scale(1) rotate(0) rotateX(0) rotateY(0) rotateZ(0) skew(0) translateZ(0)';
+                display.style.filter = 'blur(0px) hue-rotate(0deg) contrast(100%) drop-shadow(0 0 0 transparent)';
+                
+                display.style.color = `hsl(${hue}, 40%, 70%)`;
+                display.style.textShadow = `0 0 20px hsl(${hue}, 60%, 20%)`;
+                
+                document.body.style.background = `radial-gradient(circle at center, hsla(${hue}, 30%, 5%, 1) 0%, #000 70%)`;
+
+                leftCat.style.transition = `all ${decayTime}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
+                rightCat.style.transition = `all ${decayTime}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
+                
+                leftCat.style.transform = `scale(1) rotate(0deg) translateY(0)`;
+                rightCat.style.transform = `scaleX(-1) scale(1) rotate(0deg) translateY(0)`;
+                leftCat.style.filter = `drop-shadow(0 0 5px hsl(${hue}, 50%, 20%))`;
+                rightCat.style.filter = `drop-shadow(0 0 5px hsl(${hue}, 50%, 20%))`;
+            }, 50); 
+        }
+
+        function updateNumber(newNum) {
+            currentNumber = newNum;
+            slider.value = newNum;
+            display.textContent = currentNumber;
+            
+            // Instantly fetch the unique cat gif for the new level
+            const catGifSrc = catGifs[currentNumber - 1];
+            leftCat.src = catGifSrc;
+            rightCat.src = catGifSrc;
+
+            // Move the cats to their unique dimension positions!
+            const pos = catPositions[currentNumber - 1];
+            leftCatCont.style.top = pos.top;
+            leftCatCont.style.left = pos.left;
+            rightCatCont.style.top = pos.top;
+            rightCatCont.style.right = pos.right;
+
+            const hue = 220 + ((currentNumber - 1) * 15);
+            if(!isPlaying) {
+                display.style.transition = 'all 0.3s ease';
+                display.style.color = `hsl(${hue}, 40%, 70%)`;
+                display.style.textShadow = `0 0 20px hsl(${hue}, 60%, 20%)`;
+            }
+        }
+
+        startBtn.addEventListener('click', () => {
+            initAudio();
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 700);
+            
+            isPlaying = true;
+            document.body.classList.add('is-playing');
+            leftCatCont.style.opacity = '1';
+            rightCatCont.style.opacity = '1';
+
+            toggleBtn.textContent = 'STOP';
+            toggleBtn.className = 'px-6 py-2 bg-red-500/10 border-2 border-red-500 rounded-full text-red-500 hover:bg-red-500 hover:text-black font-black transition-all w-32 shadow-[0_0_20px_rgba(239,68,68,0.3)] tracking-widest text-base';
+            
+            triggerPulse();
+        });
+
+        slider.addEventListener('input', (e) => updateNumber(parseInt(e.target.value, 10)));
+
+        moodInput.addEventListener('input', (e) => {
+            const text = e.target.value.toLowerCase();
+            let matchedMood = null;
+            
+            moodSettings.tempoMult = 1.0;
+            moodSettings.filterMult = 6.0;
+            moodSettings.detune = 12;
+            let newWaveform = 'mix';
+
+            if (text.match(/calm|relax|chill|peace|slow|soft/)) {
+                moodSettings.tempoMult = 2.0; moodSettings.filterMult = 2.0; newWaveform = 'sine'; matchedMood = "Calm";
+            } else if (text.match(/energetic|excit|fast|hype|crazy|intense/)) {
+                moodSettings.tempoMult = 0.4; moodSettings.filterMult = 12.0; newWaveform = 'sawtooth'; matchedMood = "Energetic";
+            } else if (text.match(/dark|spooky|sad|scary|doom|creep/)) {
+                moodSettings.tempoMult = 1.5; moodSettings.filterMult = 3.0; moodSettings.detune = -45; newWaveform = 'square'; matchedMood = "Dark";
+            } else if (text.match(/happy|bright|joy|upbeat|fun/)) {
+                moodSettings.tempoMult = 0.7; moodSettings.filterMult = 8.0; newWaveform = 'triangle'; matchedMood = "Happy";
+            }
+
+            if (currentWaveform !== newWaveform && matchedMood !== null) {
+                currentWaveform = newWaveform;
+                waveformSelect.value = currentWaveform;
+                applyWaveform();
+            }
+            if (osc2 && audioCtx) {
+                osc2.detune.setTargetAtTime(moodSettings.detune, audioCtx.currentTime, 0.1);
+            }
+
+            if (matchedMood) {
+                moodStatus.style.opacity = '1';
+                moodStatus.textContent = `${matchedMood} MODE`;
+                clearTimeout(moodInput.feedbackTimeout);
+                moodInput.feedbackTimeout = setTimeout(() => { moodStatus.style.opacity = '0'; }, 2000);
+            } else {
+                moodStatus.style.opacity = '0';
+            }
+        });
+
+        waveformSelect.addEventListener('change', (e) => {
+            currentWaveform = e.target.value;
+            applyWaveform();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement === moodInput) return;
+            if (document.activeElement === waveformSelect || document.activeElement === slider || document.activeElement === toggleBtn) {
+                document.activeElement.blur();
+            }
+
+            let newNum = null;
+            if (e.key === 'ArrowUp') {
+                e.preventDefault(); 
+                newNum = Math.min(10, currentNumber + 1);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault(); 
+                newNum = Math.max(1, currentNumber - 1);
+            } else if (e.key === ' ' && overlay.style.display === 'none') {
+                e.preventDefault(); 
+                toggleBtn.click();
+            }
+            
+            if (newNum !== null && newNum !== currentNumber) updateNumber(newNum);
+        });
+
+        toggleBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                isPlaying = false;
+                document.body.classList.remove('is-playing');
+                leftCatCont.style.opacity = '0';
+                rightCatCont.style.opacity = '0';
+                clearTimeout(loopTimeoutId);
+                
+                toggleBtn.textContent = 'PLAY';
+                toggleBtn.className = 'px-6 py-2 bg-green-500/10 border-2 border-green-500 rounded-full text-green-400 hover:bg-green-500 hover:text-black font-black transition-all w-32 shadow-[0_0_20px_rgba(34,197,94,0.3)] tracking-widest text-base';
+                
+                if (masterGain) {
+                    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                    masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+                }
+                
+                display.style.transition = 'all 0.5s ease-out';
+                display.style.transform = 'scale(1) rotate(0) rotateX(0) rotateY(0) rotateZ(0) skew(0) translateZ(0)';
+                display.style.filter = 'none';
+                display.style.textShadow = 'none';
+                display.style.color = '#334155';
+                document.body.style.background = '#000';
+            } else {
+                isPlaying = true;
+                document.body.classList.add('is-playing');
+                leftCatCont.style.opacity = '1';
+                rightCatCont.style.opacity = '1';
+                toggleBtn.textContent = 'STOP';
+                toggleBtn.className = 'px-6 py-2 bg-red-500/10 border-2 border-red-500 rounded-full text-red-500 hover:bg-red-500 hover:text-black font-black transition-all w-32 shadow-[0_0_20px_rgba(239,68,68,0.3)] tracking-widest text-base';
+                
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                triggerPulse();
+            }
+        });
+    </script>
+</body>
+</html>
