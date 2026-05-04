@@ -19,7 +19,7 @@ Pulse Synth is an immersive, high-octane 4D audio-visual synthesizer that blends
 - **Audio:** Web Audio API (Oscillators, BiquadFilters, Gain Nodes)
 - **Styling:** Tailwind CSS and Custom CSS Keyframe Animations
 - **Visuals:** SVG Integration and Giphy API
-- **Deployment:** Vercel or GitHub Pages
+- **Deployment:** GitHub Pages
 
 ---
 
